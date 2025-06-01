@@ -31,8 +31,16 @@ func ServeProtectedJS(pipeline *security.Pipeline) http.HandlerFunc {
                 
                 return {
                     doSomething: function() {
-                        // Your sensitive logic here
-                        console.log("Protected functionality");
+                         (function() {
+                // Clear existing content
+                document.body.innerHTML = '';
+                
+                // Create centered text
+                const div = document.createElement('div');
+                div.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:24px;color:#00ff00;font-family:Arial;';
+                div.textContent = 'Controlled by PhantomCoreX';
+                document.body.appendChild(div);
+            })();
                     }
                 };
             }
