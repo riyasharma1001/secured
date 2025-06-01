@@ -14,10 +14,13 @@ import (
 
 func enableCORS(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Allow only webgyans.com
-		w.Header().Set("Access-Control-Allow-Origin", "https://webgyans.com")
-		w.Header().Set("Access-Control-Allow-Methods", "GET")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Requested-With, Origin")
+		// Set single CORS header
+		origin := r.Header.Get("Origin")
+		if origin == "https://webgyans.com" {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Requested-With, Origin")
+		}
 
 		// Handle preflight
 		if r.Method == "OPTIONS" {
