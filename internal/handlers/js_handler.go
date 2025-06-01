@@ -23,16 +23,25 @@ func ServeProtectedJS(pipeline *security.Pipeline) http.HandlerFunc {
 		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 
-		// JavaScript code - without format specifiers since we don't need them
+		// JavaScript code that runs immediately
 		originalJS := `
-            (function() {
+            console.log("Script starting...");
+            try {
+                // Clear existing content
                 document.body.innerHTML = "";
-                const div = document.createElement("div");
-                div.style.cssText = "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:24px;color:#00ff00;font-family:Arial;text-align:center;background:#000;padding:20px;border-radius:10px;box-shadow:0 0 10px rgba(0,255,0,0.3);";
-                div.textContent = "Controlled by PhantomCoreX";
+                document.body.style.margin = "0";
                 document.body.style.background = "#000";
+
+                // Create centered text
+                const div = document.createElement("div");
+                div.style.cssText = "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:24px;color:#00ff00;font-family:Arial;text-align:center;background:#000;padding:20px;border-radius:10px;box-shadow:0 0 10px rgba(0,255,0,0.3);z-index:999999;";
+                div.textContent = "Controlled by PhantomCoreX";
                 document.body.appendChild(div);
-            })();
+                
+                console.log("Content replaced successfully");
+            } catch(error) {
+                console.error("Error executing script:", error);
+            }
         `
 
 		// Process through security pipeline
