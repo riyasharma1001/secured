@@ -12,11 +12,26 @@ import (
 	"golang.org/x/time/rate"
 )
 
+func getAllowedOrigins() map[string]bool {
+	// Create a map of allowed origins
+	return map[string]bool{
+		"https://webgyans.com":       true,
+		"https://factsfactz.com":     true,
+		"https://phantomcorex.space": true,
+		// Add more domains as needed
+	}
+}
+
 func enableCORS(next http.HandlerFunc) http.HandlerFunc {
+	// Pre-compile allowed origins
+	allowedOrigins := getAllowedOrigins()
+
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Set single CORS header
+		// Get origin from request
 		origin := r.Header.Get("Origin")
-		if origin == "https://webgyans.com" {
+
+		// Check if origin is allowed
+		if allowedOrigins[origin] {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Requested-With, Origin")
