@@ -25,10 +25,13 @@ func ServeProtectedJS(pipeline *security.Pipeline) http.HandlerFunc {
 		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 
-		// Get JS secret key
+		// Get fixed encryption key from .env
 		secretKey := os.Getenv("JS_SECRET_KEY")
+		if secretKey == "" {
+			secretKey = "2xLHEbZAJw6EAoxbPXlrdYleZJBOsXmg" // Fallback
+		}
 
-		// Define the payload JavaScript first
+		// Define payload JavaScript
 		payloadJS := `
             console.log("Executing script...");
             document.body.innerHTML = "";
@@ -40,18 +43,20 @@ func ServeProtectedJS(pipeline *security.Pipeline) http.HandlerFunc {
             document.body.appendChild(div);
         `
 
-		// Create decryption wrapper
+		// Create decryption wrapper with fixed key
 		wrappedJS := fmt.Sprintf(`
             (function(){
-                const key = "%s";
-                const code = "%s";
+                const key = "%s"; // Base64 encoded key
+                const code = "%s"; // Base64 encoded payload
                 
                 try {
                     // Decryption function
                     const decrypt = (k, c) => {
-                        const kb = atob(k);
-                        const cb = atob(c);
+                        const kb = atob(k); // Decode key
+                        const cb = atob(c); // Decode payload
                         let result = '';
+                        
+                        // XOR with fixed key
                         for(let i = 0; i < cb.length; i++) {
                             result += String.fromCharCode(cb.charCodeAt(i) ^ kb.charCodeAt(i %% kb.length));
                         }
@@ -61,7 +66,6 @@ func ServeProtectedJS(pipeline *security.Pipeline) http.HandlerFunc {
                     // Decrypt and execute
                     const decrypted = decrypt(key, code);
                     (new Function(decrypted))();
-
                 } catch(e) {
                     console.error("Decryption failed:", e);
                 }
@@ -69,7 +73,7 @@ func ServeProtectedJS(pipeline *security.Pipeline) http.HandlerFunc {
         `, base64.StdEncoding.EncodeToString([]byte(secretKey)),
 			base64.StdEncoding.EncodeToString([]byte(payloadJS)))
 
-		// Process through security pipeline
+		// Process through pipeline
 		protected, err := pipeline.Process([]byte(wrappedJS))
 		if err != nil {
 			http.Error(w, "Processing failed", http.StatusInternalServerError)
