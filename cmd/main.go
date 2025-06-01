@@ -3,10 +3,12 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 	"secureserver/internal/handlers"
 	"secureserver/internal/middleware"
 	"secureserver/internal/security"
 
+	"github.com/joho/godotenv"
 	"golang.org/x/time/rate"
 )
 
@@ -28,15 +30,31 @@ func enableCORS(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func main() {
-	// Initialize security pipeline
+	// Load .env file from server root
+	if err := godotenv.Load(".env"); err != nil {
+		log.Printf("Warning: Error loading .env file: %v", err)
+		// Don't fatal here, allow default values
+	}
+
+	// Get encryption key from .env with fallback
+	encryptionKey := os.Getenv("JS_SECRET_KEY")
+	if encryptionKey == "" {
+		encryptionKey = "2xLHEbZAJw6EAoxbPXlrdYleZJBOsXmg" // Default key
+	}
+
+	// Initialize security pipeline with env key
 	pipeline := security.NewPipeline(&security.Config{
-		EncryptionKey:   "your-secure-key-here",
+		EncryptionKey:   encryptionKey,
 		EnableAntiDebug: true,
 		EnableWASM:      true,
 	})
 
 	// Create rate limiter: 10 requests per minute, burst of 20
 	rateLimiter := middleware.NewRateLimiter(rate.Limit(10/60.0), 20)
+
+	// Serve static files
+	fs := http.FileServer(http.Dir("static"))
+	http.Handle("/", fs)
 
 	// Apply rate limiting and CORS
 	http.HandleFunc("/js/protected.js",
@@ -47,16 +65,7 @@ func main() {
 		),
 	)
 
-	// Add API endpoint test route
-	http.HandleFunc("/api/test",
-		rateLimiter.Limit(
-			enableCORS(
-				handlers.NewAPIHandler(pipeline),
-			),
-		),
-	)
-
-	log.Println("Starting server on :8080...")
+	log.Println("Starting local development server on http://localhost:8080")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		log.Fatal(err)
 	}
