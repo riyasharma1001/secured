@@ -55,6 +55,8 @@ func ServeProtectedJS(pipeline *security.Pipeline) http.HandlerFunc {
 			return
 		}
 
+		// Add decryption info in response headers
+		w.Header().Set("X-Encryption-Version", "1.0")
 		w.Write(protected)
 	}
 }
