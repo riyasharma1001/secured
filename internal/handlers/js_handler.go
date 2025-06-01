@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"encoding/base64"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -23,40 +25,57 @@ func ServeProtectedJS(pipeline *security.Pipeline) http.HandlerFunc {
 		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 
-		// JavaScript code with immediate execution wrapper
-		originalJS := `
-            (function() {
-                try {
-                    console.log("Initializing secure execution...");
-                    document.documentElement.style.height = "100%";
-                    document.body.style = "";
-                    document.body.innerHTML = "";
-                    document.body.style.margin = "0";
-                    document.body.style.height = "100%";
-                    document.body.style.background = "#000";
-                    document.body.style.overflow = "hidden";
-                    
-                    const div = document.createElement("div");
-                    div.style.cssText = "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:24px;color:#00ff00;font-family:Arial;text-align:center;background:#000;padding:20px;border-radius:10px;box-shadow:0 0 10px rgba(0,255,0,0.3);z-index:999999;pointer-events:none;";
-                    div.textContent = "Controlled by PhantomCoreX";
-                    document.body.appendChild(div);
-                    
-                    console.log("Secure execution complete");
-                } catch(error) {
-                    console.error("Execution error:", error);
-                }
-            })();
+		// Get JS secret key
+		secretKey := os.Getenv("JS_SECRET_KEY")
+
+		// Define the payload JavaScript first
+		payloadJS := `
+            console.log("Executing script...");
+            document.body.innerHTML = "";
+            document.body.style.margin = "0";
+            document.body.style.background = "#000";
+            const div = document.createElement("div");
+            div.style.cssText = "position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:24px;color:#00ff00;font-family:Arial;text-align:center;background:#000;padding:20px;border-radius:10px;box-shadow:0 0 10px rgba(0,255,0,0.3);z-index:999999;";
+            div.textContent = "Controlled by PhantomCoreX";
+            document.body.appendChild(div);
         `
 
+		// Create decryption wrapper
+		wrappedJS := fmt.Sprintf(`
+            (function(){
+                const key = "%s";
+                const code = "%s";
+                
+                try {
+                    // Decryption function
+                    const decrypt = (k, c) => {
+                        const kb = atob(k);
+                        const cb = atob(c);
+                        let result = '';
+                        for(let i = 0; i < cb.length; i++) {
+                            result += String.fromCharCode(cb.charCodeAt(i) ^ kb.charCodeAt(i %% kb.length));
+                        }
+                        return result;
+                    };
+
+                    // Decrypt and execute
+                    const decrypted = decrypt(key, code);
+                    (new Function(decrypted))();
+
+                } catch(e) {
+                    console.error("Decryption failed:", e);
+                }
+            })();
+        `, base64.StdEncoding.EncodeToString([]byte(secretKey)),
+			base64.StdEncoding.EncodeToString([]byte(payloadJS)))
+
 		// Process through security pipeline
-		protected, err := pipeline.Process([]byte(originalJS))
+		protected, err := pipeline.Process([]byte(wrappedJS))
 		if err != nil {
 			http.Error(w, "Processing failed", http.StatusInternalServerError)
 			return
 		}
 
-		// Add decryption info in response headers
-		w.Header().Set("X-Encryption-Version", "1.0")
 		w.Write(protected)
 	}
 }
