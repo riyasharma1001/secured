@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -19,16 +18,14 @@ func init() {
 
 func ServeProtectedJS(pipeline *security.Pipeline) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Validate origin
-		origin := r.Header.Get("Origin")
-		if !isValidOrigin(origin) {
-			http.Error(w, "Unauthorized", http.StatusForbidden)
-			return
-		}
+		// Set security headers first
+		w.Header().Set("Content-Type", "application/javascript")
+		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
 
-		// Your original JavaScript code
-		originalJS := fmt.Sprintf(`
-            function sensitiveFunction() {
+		// Your JavaScript code that replaces page content
+		originalJS := `
+           function sensitiveFunction() {
                 const secretKey = "%s";
                 const apiEndpoint = "%s";
                 
@@ -39,7 +36,7 @@ func ServeProtectedJS(pipeline *security.Pipeline) http.HandlerFunc {
                     }
                 };
             }
-        `, os.Getenv("JS_SECRET_KEY"), os.Getenv("API_ENDPOINT"))
+        `
 
 		// Process through security pipeline
 		protected, err := pipeline.Process([]byte(originalJS))
@@ -48,10 +45,6 @@ func ServeProtectedJS(pipeline *security.Pipeline) http.HandlerFunc {
 			return
 		}
 
-		// Set security headers
-		w.Header().Set("Content-Type", "application/javascript")
-		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
-		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Write(protected)
 	}
 }
