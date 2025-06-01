@@ -15,9 +15,9 @@ import (
 func getAllowedOrigins() map[string]bool {
 	// Create a map of allowed origins
 	return map[string]bool{
-		"https://webgyans.com": true,
+		"https://webgyans.com":        true,
 		"https://health.webgyans.com": true,
-		"https://legal.webgyans.com": true,
+		"https://legal.webgyans.com":  true,
 		// Add more domains as needed
 	}
 }
@@ -32,9 +32,11 @@ func enableCORS(next http.HandlerFunc) http.HandlerFunc {
 
 		// Check if origin is allowed
 		if allowedOrigins[origin] {
+			// Set CORS headers
 			w.Header().Set("Access-Control-Allow-Origin", origin)
-			w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Requested-With, Origin")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS, POST")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Requested-With, Origin, Accept")
+			w.Header().Set("Access-Control-Max-Age", "3600")
 		}
 
 		// Handle preflight
