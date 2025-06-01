@@ -15,9 +15,9 @@ import (
 func getAllowedOrigins() map[string]bool {
 	// Create a map of allowed origins
 	return map[string]bool{
-		"https://webgyans.com":       true,
-		"https://factsfactz.com":     true,
-		"https://phantomcorex.space": true,
+		"https://webgyans.com": true,
+		"https://health.webgyans.com": true,
+		"https://legal.webgyans.com": true,
 		// Add more domains as needed
 	}
 }
