@@ -51,9 +51,8 @@ func enableCORS(next http.HandlerFunc) http.HandlerFunc {
 
 func main() {
 	// Load .env file from server root
-	if err := godotenv.Load(".env"); err != nil {
+	if err := godotenv.Load(); err != nil {
 		log.Printf("Warning: Error loading .env file: %v", err)
-		// Don't fatal here, allow default values
 	}
 
 	// Get encryption key from .env with fallback
@@ -62,21 +61,18 @@ func main() {
 		encryptionKey = "2xLHEbZAJw6EAoxbPXlrdYleZJBOsXmg" // Default key
 	}
 
-	// Initialize security pipeline with env key
+	// Initialize security pipeline
 	pipeline := security.NewPipeline(&security.Config{
 		EncryptionKey:   encryptionKey,
 		EnableAntiDebug: true,
 		EnableWASM:      true,
 	})
 
-	// Create rate limiter: 10 requests per minute, burst of 20
+	// Create rate limiter
 	rateLimiter := middleware.NewRateLimiter(rate.Limit(10/60.0), 20)
 
-	// Serve static files
-	fs := http.FileServer(http.Dir("static"))
-	http.Handle("/", fs)
-
-	// Apply rate limiting and CORS
+	// Setup server routes
+	http.Handle("/", http.FileServer(http.Dir("static")))
 	http.HandleFunc("/js/protected.js",
 		rateLimiter.Limit(
 			enableCORS(
@@ -85,7 +81,8 @@ func main() {
 		),
 	)
 
-	log.Println("Starting local development server on http://localhost:8080")
+	// Start server
+	log.Println("Starting server on :8080")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		log.Fatal(err)
 	}
