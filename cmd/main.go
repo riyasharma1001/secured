@@ -30,22 +30,30 @@ func enableCORS(next http.HandlerFunc) http.HandlerFunc {
 		// Get origin from request
 		origin := r.Header.Get("Origin")
 
+		// Debug logging
+		log.Printf("Request from origin: %s", origin)
+
 		// Check if origin is allowed
 		if allowedOrigins[origin] {
 			// Set CORS headers
 			w.Header().Set("Access-Control-Allow-Origin", origin)
-			w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS, POST")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, X-Requested-With, Origin, Accept")
 			w.Header().Set("Access-Control-Max-Age", "3600")
-		}
 
-		// Handle preflight
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
+			// Handle preflight
+			if r.Method == "OPTIONS" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+
+			next(w, r)
 			return
 		}
 
-		next(w, r)
+		// If origin not allowed, log and return 403
+		log.Printf("Unauthorized origin: %s", origin)
+		http.Error(w, "Unauthorized origin", http.StatusForbidden)
 	}
 }
 
